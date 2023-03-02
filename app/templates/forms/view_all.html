@@ -1,0 +1,68 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ projectname }} - Forms{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Your Forms</h1>
+</div>
+<div class="collapse">
+	<div class="collapse-head open">Incomplete</div>
+	<div class="collapse-body">
+	{% if incomplete['forms']|length > 0 %}
+		{% for form in incomplete['forms'] %}
+			{{ components.form_card(user, project, form) }}
+		{% endfor %}
+	{% else %}
+	<p class="empty bold">There are no unsubmitted forms to display</p>
+	{% endif %}
+	</div>
+</div>
+<div class="collapse">
+	<div class="collapse-head open">Complete</div>
+	<div class="collapse-body">
+	{% if complete['forms']|length > 0 %}
+		{% for form in complete['forms'] %}
+			{{ components.form_card(user, project, form) }}
+		{% endfor %}
+	{% else %}
+	<p class="empty bold">There are no submitted forms to display</p>
+	{% endif %}
+	</div>
+</div>
+<script>
+	$(() => {
+		$(".collapse-head").on("click", ({ target }) => {
+			$(target).toggleClass("open")
+		})
+
+		$('.form_info').on("click", (event) => {
+			fetch(`${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/evaluations/get/${parseInt(event.target.id.slice(5))}`)
+			.then(response => response.json())
+			.then(data => {
+				$(".modal").addClass("form")
+				$(document).trigger("showModal", [formModalContent(data)])
+			})
+		})
+	})
+
+	const formModalContent = (data) => {
+		const { comment, disabled, eid, questions, status, target, task, user } = data
+		let questionsFmt = `<table><tbody>`
+		questions.forEach((question) => {
+			questionsFmt += `<tr>
+					<td class="sub">${utilQuestions.get(question.category)}</td>
+					<td class="text bold">${utilAnswers.get(question.answer)} (${question.answer})</td>
+				</tr>`
+		})
+		questionsFmt += `</tbody></table>`
+		questionsFmt += `<p>Additional Comments: ${comment ?? 'None Submitted'}</p>`
+		let buttonFmt = `<div class="wrapper align-center justify-even"><button class="modal_btn modal_close details">Close</button></div>`
+		return `<h1>Evaluation for: ${target}</h1>${questionsFmt}${buttonFmt}`
+	}
+
+	const updateModal = async (eid) => {
+		const response = await fetch(`${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/evaluations/get/${eid}`)
+		const data = await response.json()
+		return formModalContent(data)
+	}
+</script>
+{% endblock %}

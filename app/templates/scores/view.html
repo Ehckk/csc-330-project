@@ -1,0 +1,65 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Scores{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Scores for {{ user_score['user']['firstname'] }} {{ user_score['user']['lastname'] }}</h1>
+</div>
+<div class="score-dashboard">
+	<div class="card task-count">
+		<p>{{ 'You have' if user_score['user']['id'] == user['id'] else user_score['user']['firstname'] + ' ' + user_score['user']['lastname'] + ' has' }}  been assigned to <span class="text bold">{{ tasks['all'] }}</span> tasks</p>
+		<p><span class="text bold">{{ tasks['completed'] }}</span> of these {{ 'has' if tasks['completed'] == 1 else 'have'}} been <span class="text bold submit">completed</span></p>
+		<p><span class="text bold">{{ tasks['skipped'] }}</span> of these {{ 'has' if tasks['skipped'] == 1 else 'have'}} been <span class="text bold skip">skipped</span></p>
+	</div>
+	<div class="card overall-score">
+	{% if user_score['categories']|length > 0 %}
+		<p>Overall Score: <span class="text bold">{{ user_score['overall'] }}</span></p>
+	{% else %}
+		<p class="text bold error">There is not enough evaluation data to produce scores at this time</p>
+	{% endif %}
+	</div>
+	{% if user_score['categories']|length > 0 %}
+		{% for (category, score) in user_score['categories'].items() %}
+		<div class="card score-card">
+			<p class="bfn bold">{{ score }}</p>
+			<p>{{ category }}</p>
+		</div>
+		{% endfor %}
+		<div class="card graph">
+			<canvas id="chart"></canvas>
+		</div>
+	{% endif %}
+</div>
+<script>
+	new Chart("chart", {
+		type: "bar",
+		data: {
+			labels: "{% for category in user_score['categories'].keys() %}{{ category }} {% endfor %}".trim().split(" "),
+			datasets: [{
+				label: "{{ user_score['user']['firstname'] }} {{ user_score['user']['lastname'] }}",
+				data: "{% for score in user_score['categories'].values() %}{{ score }} {% endfor %}".trim().split(" "),
+				backgroundColor: '#00a266'
+			},
+			{
+				label: "{{ 'Group Average' }}",
+				data: "{% for score in group_score['categories'].values() %}{{ score }} {% endfor %}".trim().split(" "),
+				backgroundColor: '#ff7f0e'
+			}]
+		},
+		options: {
+			title: {
+				display: true,
+				text: "Scores"
+			},
+			scales: {
+				yAxes: [{
+					ticks: {
+						suggestedMin: 1,
+						suggestedMax: 5,
+					}
+				}]
+
+			}
+		}
+	});
+</script>
+{% endblock %}

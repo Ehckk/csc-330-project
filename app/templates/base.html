@@ -1,0 +1,318 @@
+{% import 'components.html' as components %}
+{% import 'modals.html' as modals %}
+{% block root %}
+<html lang="en" class="theme-rose">
+{% endblock %}
+{% block head %}
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{% block title %}{% endblock %}</title>
+	{{ components.styles() }}
+	{{ components.globals() }}
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+</head>
+{% endblock %}
+<body>
+	<div class="sidebar">
+		<div class="links">
+			<a href="/">Home</a>
+			<!-- <a href="/">Settings</a> -->
+		</div>
+		<div class="recent-links">
+			{% if prev_urls|length > 0 %}
+				<p class="large invert">Recently Visited</p>
+				{% for prev_url in prev_urls %}
+					<a href="{{ prev_url['url'] }}">
+						<p class="invert med invert" >{{ prev_url['label'] }}</p>
+						{% if prev_url['sub'] != none %}
+							<p class="sub invert">{{ prev_url['sub'] }}</p>
+						{% endif %}
+					</a>
+				{% endfor %}
+			{% endif %}
+		</div>
+		<div class="login-info">
+			<p class="sub invert">Logged in as</p>
+			<p class="text bold invert large">{{ user['firstname'] }} {{ user['lastname'] }}</p>
+			<p class="med invert">{{ user['username'] }}</p>
+			<a class="logout invert" href="/logout">Log Out</a>
+		</div>
+	</div>
+	<nav class="navbar">
+		<div class="wrapper">
+			<div class="menu">
+				<span></span>
+				<span></span>
+				<span></span>
+			</div>
+			<h1>DIM Tasks</h1>
+		</div>
+		<div class="mail" unread-count="0">
+			<svg class="icon fade" viewBox="10 10 80 60" width="80" height="60">
+				<path style="fill: var(--g-50); stroke-linecap: round; stroke-width: 4px; stroke-linejoin: round; stroke: var(--g-50);" d="M 10 25 L 10 70 L 90 70 L 90 25 L 50 45 L 10 25 Z"></path>
+				<path style="fill: var(--g-50); stroke-linecap: round; stroke-width: 4px; stroke-linejoin: round; stroke: var(--g-50);" d="M 10 10 L 10 15 L 50 35 L 90 15 L 90 10 L 10 10 Z"></path>
+			</svg>
+		</div>
+		<div class="inbox-notifs" style="display: none;">
+			<h2 class="center-align">Inbox</h2>
+			<div class="wrapper justify-even align-center">
+				<span class="inbox-label bold text large center-align show_received active">Recieved</span>
+				<span class="inbox-label bold text large center-align show_sent">Sent</span>
+			</div>
+			<div class="inbox-list card-embed sent-messages" style="display: none;">
+				{{ components.spinner(false, false, false) }}
+			</div>
+			<div class="inbox-list card-embed received-messages">
+				{{ components.spinner(false, false, false) }}
+			</div>
+			<div class="wrapper align-center justify-even">
+				<button class="inbox_btn inbox_refresh small sec">Refresh</button>
+				<button class="inbox_btn inbox_close small details">Close</button>
+			</div>
+		</div>
+	</nav>
+	<div class="modal-overlay">
+		<div class="modal">
+
+		</div>
+	</div>
+	<script>
+		let messages = new Map()
+
+		const openInbox = () => {
+			$(".mail").addClass('open')
+			$(".inbox-notifs").show()
+			$('.show_sent').on("click", () => {
+				if (!$('.show_sent').hasClass('active')) {
+					$('.show_sent').addClass('active')
+					$('.show_received.active').removeClass('active')
+					$('.sent-messages').show()
+					$('.received-messages').hide()
+				}
+			})
+			$('.show_received').on("click", () => {
+				if (!$('.show_received').hasClass('active')) {
+					$('.show_received').addClass('active')
+					$('.show_sent.active').removeClass('active')
+					$('.received-messages').show()
+					$('.sent-messages').hide()
+				}
+			})
+			$('.inbox_refresh').on("click", () => {
+				fetchMessages()
+			})
+			$('.inbox_close').on("click", () => {
+				closeInbox()
+			})
+		}
+
+		const closeInbox = () => {
+			$(".mail").removeClass('open')
+			$(".inbox-notifs").hide()
+			$('.inbox_btn, .inbox-label').off("click")
+		}
+
+		$(() => {
+			fetchMessages()
+			$(".menu").on("click", () => $(".sidebar").toggleClass("show"))
+
+			$(".mail").on("click", () => $(".inbox-notifs").is(":hidden") ? openInbox() : closeInbox())
+
+			$(document).on("showModal", (event, content) => {
+				$(".modal").html(content)
+				$(".modal .temp").hide()
+				$(".modal-overlay, .modal").fadeIn(300)
+				$("button.modal_close").on("click", () => {
+					$(document).trigger("closeModal")
+				})
+			})
+
+			$(document).on("closeModal", (event) => {
+				$(".modal-overlay").fadeOut(300)
+				$(".modal").fadeOut(300, () => {
+					$(".modal").empty()
+					$(".modal").removeClass("form")
+				})
+			})
+			$(".message_user").on("click", async (e) => {
+				const id = parseInt(e.target.id.substring(8))
+				$(".modal > *:not(.temp)").hide()
+				$(".modal > .temp").show()
+				const response = await fetch(`${$SCRIPT_ROOT}/users/get/${id}`)
+				const data = await response.json()
+				const { user } = data
+				$(document).trigger("showModal", [sendMessageModal(user)])
+				$("form.send_message").on("submit", (e) => {
+					e.preventDefault()
+					const params = {
+						type: "POST",
+						selectors: {
+							spinner: ".modal .temp",
+							buttons: ".modal_btn",
+							content: "form.send_message .field, form .error",
+							error: ".modal .error"
+						},
+						form: 'form.send_message',
+						url: `${$SCRIPT_ROOT}/messages/${id}`,
+						token: '{{ msg_form.csrf_token._value() }}',
+						handler: (code, message) => {
+							document.querySelector("form.send_message").reset()
+							$('.modal p.submit').show()
+							fetchMessages()
+						}
+					}
+					ajaxRequest(params, true)
+				})
+			})
+		})
+
+		const getMessageCard = (message, type) => {
+			const { mid, subject, content, id, user, id2, target, status, date } = message
+			const fmtSubject = subject === null ? "No Subject" : subject.length > 32 ? `${subject.substring(0, 32)}...` : subject
+			let msgCard = `<div id="message_${mid}_${type}" class="message-card ${type === 'received' ? status.toLowerCase() : 'read'}">
+						<h3>${fmtSubject}</h3>
+						<p class="sub">${type === 'sent' ? `To: ${target}` : `From: ${user}`}</p>
+						<p class="sub date">${date}</p>
+					</div>`
+			return msgCard
+		}
+
+		const sendMessageModal = (user) => {
+			const { firstname, lastname, username, id } = user
+			let msgModal = `
+				<div class="wrapper align-center">
+					<button type="button" class="modal_btn modal_close send-message-close"></button>
+				</div>
+				<form class="send_message">
+				<h2>New Message to ${firstname} ${lastname}</h1>
+				{{ msg_form.hidden_tag() }}
+				<p class="med">${username}</p>
+				<p class="med text submit" style="display: none;">Message sent to ${firstname} ${lastname}</p>
+				{{ components.spinner(false, false, false) }}
+				<div class="field">
+					{{ msg_form.subject.label }}
+					{{ msg_form.subject(size=32) }}
+				</div>
+				<div class="field">
+					{{ msg_form.content.label }}
+					{{ msg_form.content(size=32) }}
+				</div>
+				<div class="wrapper justify-even align-center">
+					{{ msg_form.submit(class_="modal_btn base") }}
+				</div>
+			</form>`
+			return msgModal
+		}
+
+		const getColoredStatusText = (status, content) => `<span class="text bold ${utilClasses.get(status)}">${content}</span>`
+
+		const updateInbox = (sent, received) => {
+			if (sent.length > 0) {
+				sent.forEach((message) => {
+					$('.sent-messages').append(getMessageCard(message, 'sent'))
+				})
+				$(".sent-messages").removeClass('none')
+			} else {
+				$('.sent-messages').addClass('none')
+				$('.sent-messages').append(`<span>No sent messages</span>`)
+			}
+			if (received.length > 0) {
+				received.forEach((message) => {
+					$('.received-messages').append(getMessageCard(message, 'received'))
+				})
+				$(".received-messages").removeClass('none')
+			} else {
+				$('.received-messages').addClass('none')
+				$('.received-messages').append(`<span>No received messages</span>`)
+			}
+		}
+
+		const fetchMessages = () => {
+			$('.message-card').off("click")
+			$(".inbox-notifs .temp").show()
+			$(".inbox-list .message-card").remove()
+			$(".inbox-list span").remove()
+			fetch(`${$SCRIPT_ROOT}/messages`)
+			.then(response => response.json())
+			.then(data => {
+				const { sent, received } = data
+				messages = new Map();
+				[...sent, ...received].forEach((message) => {
+					const { mid, id, user, id2, target, subject, content, status, date } = message
+					messages.set(mid, { subject, content, id, user, id2, user, target, status, date })
+				})
+				updateInbox(sent, received)
+				$('.mail').attr('unread-count', received.filter((message) => message.status === 'UNREAD').length)
+				$(".inbox-notifs .temp").hide()
+				$(".message-card").on("click", (e) => {
+					e.preventDefault()
+					const card = e.target.closest('.message-card').id.slice(8)
+					const [mid, type] = card.split("_")
+					updateMessage(parseInt(mid), type)
+				})
+			})
+		}
+
+		const updateMessage = async (mid, type) => {
+			const message = messages.get(mid)
+			if (message.status === 'UNREAD' && type === 'received') {
+				const response = await fetch(`${$SCRIPT_ROOT}/messages/read/${mid}`)
+				const data = await response.json()
+				const { code, message } = data
+				messages.get(mid).status = 'READ'
+				$(`#message_${mid}_${type}`).addClass('read')
+				let count = $('.mail').attr('unread-count')
+				$('.mail').attr('unread-count', count - 1)
+			}
+			$(document).trigger("showModal", [viewMessageModal(message, type)])
+			$(".modal_btn.message_user").on("click", async (e) => {
+				const id = parseInt(e.target.id.substring(8))
+				$(".modal > *:not(.temp)").hide()
+				$(".modal > .temp").show()
+				const response = await fetch(`${$SCRIPT_ROOT}/users/get/${id}`)
+				const data = await response.json()
+				const { user } = data
+				$(document).trigger("showModal", [sendMessageModal(user)])
+				$("form.send_message").on("submit", (e) => {
+					e.preventDefault()
+					const params = {
+						type: "POST",
+						selectors: {
+							spinner: ".modal .temp",
+							buttons: ".modal_btn",
+							content: "form.send_message .field, form .error",
+							error: ".modal .error"
+						},
+						form: 'form.send_message',
+						url: `${$SCRIPT_ROOT}/messages/${id}`,
+						token: '{{ msg_form.csrf_token._value() }}',
+						handler: (code, message) => {
+							document.querySelector("form.send_message").reset()
+							$('.modal p.submit').show()
+							fetchMessages()
+						}
+					}
+					ajaxRequest(params, true)
+				})
+			})
+		}
+
+		const viewMessageModal = (message, type) => {
+			const { mid, subject, content, id, user, id2, target, status, date } = message
+			return `
+				<h2>${subject}</h1>
+				{{ components.spinner(false, false, false) }}
+				<p class="large">${content}</p>
+				<p class="med">${type === 'received' ? `Sent by ${user}` : `Sent to ${target}`} on ${date}</p>
+				<div class="wrapper align-center justify-even">
+					<button class="modal_btn modal_close details">Close</button>
+					${type === 'received' ? `<button id="message_${id}" class="modal_btn message_user sec">Send Response</button>` : ''}
+				</div>`
+		}
+	</script>
+	{% block content %}{% endblock %}
+</body>
+</html>

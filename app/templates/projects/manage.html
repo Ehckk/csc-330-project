@@ -1,0 +1,143 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Settings{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Settings - {{ project['name'] }}</h1>
+	<!-- <a class="button base" href="/project/{{ project['pid'] }}/tasks/create">Create New Task</a> -->
+</div>
+{{ components.spinner() }}
+<form class="update_project">
+	<p class="error"></p>
+	{{ form.hidden_tag() }}
+	<div class="field">
+		{{ form.name.label }}
+		{{ form.name(size=32) }}
+	</div>
+	<div class="field">
+		{{ form.description.label }}
+		{{ form.description(size=32, rows="3") }}
+	</div>
+	<div class="field">
+		{{ form.color.label }}
+		<div class="color">
+			{% for color in form.color %}
+				{{ color(class_="btn") }}
+			{% endfor %}
+		</div>
+	</div>
+	<div class="wrapper align-center">
+		<a href="/projects" class="button details">Cancel</a>
+		{{ form.submit(class_="submit") }}
+	</div>
+</form>
+<div class="shift header">
+	<h2 class="text danger">Danger Zone</h2>
+</div>
+<div class="wrapper align-center">
+	<button class="show warning {{ 'disabled' if project['users']|length == 1 }}">Transfer Ownership</button>
+	<button class="show danger">Delete Project</button>
+</div>
+{% if project['users']|length > 1 %}
+<script>
+	$(() => {
+		$(".dashboard-content .temp").hide()
+
+		$("button.show.warning").on("click", () => {
+			$(document).trigger("showModal", [`{{ modals.transfer_project(transfer_form, project) }}`])
+			$(".modal .project_name").text(projectName)
+			const input = ".modal input[type=text]"
+			const transferButton = ".project_transfer"
+			const error = ".modal .error"
+			$(input).on("keyup", (e) => {
+				if ($(e.target).val() !== projectName) {
+					$(error).text("Project name does not match")
+					$(transferButton).addClass("disabled")
+				} else {
+					$(error).text("")
+					$(transferButton).removeClass("disabled")
+				}
+			})
+
+			$("form.transfer_project").on("submit", (e) => {
+				e.preventDefault()
+				const params = {
+					type: "POST",
+					selectors: {
+						spinner: ".modal .temp",
+						buttons: ".modal_btn",
+						content: "form.transfer_project .field, form.transfer_project .error",
+						error: ".modal .error"
+					},
+					form: 'form.transfer_project',
+					url: `{{ url_for('transfer_project', pid=project['pid']) }}`,
+					token: '{{ form.csrf_token._value() }}',
+					handler: (code, message) => window.location.href = "{{ url_for('view_tasks', pid=project['pid']) }}"
+				}
+				ajaxRequest(params)
+			})
+		})
+	})
+</script>
+{% endif %}
+<script>
+	var projectName = "{{ project['name'] }}"
+
+	const updateProject = async () => {
+		fetch(`${$SCRIPT_ROOT}/projects/get/{{ project['pid'] }}`)
+		.then(response => response.json())
+		.then(data => {
+			const { project } = data
+			$(":root").removeClass()
+			$(":root").addClass(`theme-${project.color}`)
+			projectName = project.name
+			$(".dashboard-bar h1").text(project.name)
+			$(".dashboard-content .header h1").text(`Settings - ${project.name}`)
+			$(".temp").hide()
+			$("form.update_project, .dashboard-content .header, .dashboard-content .wrapper").show()
+			$(".dashboard-content button").removeClass("disabled")
+		})
+	}
+	$(() => {
+		$(".dashboard-content .temp").hide()
+
+		$("form.update_project").submit((e) => {
+			e.preventDefault()
+			const params = {
+				type: "POST",
+				selectors: {
+					spinner: ".dashboard-content .temp",
+					buttons: ".dashboard-content button",
+					content: "form.update_project, .dashboard-content .header, .dashboard-content .wrapper",
+					error: ".error"
+				},
+				form: 'form.update_project',
+				url: `{{ url_for('update_project', pid=project['pid']) }}`,
+				token: '{{ form.csrf_token._value() }}',
+				handler: (code, message) => updateProject()
+			}
+			ajaxRequest(params, autoShow=false)
+		})
+
+		$("button.show.danger").on("click", () => {
+			$(document).trigger("showModal", [`{{ modals.delete_project(project) }}`])
+			$(".modal .project_name").text(projectName)
+			const input = ".modal input[type=text]"
+			const deleteButton = ".project_delete"
+			const error = ".modal .error"
+			$(input).on("keyup", (e) => {
+				if ($(e.target).val() !== projectName) {
+					$(error).text("Project name does not match")
+					$(deleteButton).addClass("disabled")
+				} else {
+					$(error).text("")
+					$(deleteButton).removeClass("disabled")
+				}
+			})
+			$(deleteButton).on("click", () => {
+				$('.modal p, .modal .field').hide()
+				$('.modal .temp').fadeIn(500)
+			})
+		})
+	})
+</script>
+{% endblock %}

@@ -1,0 +1,544 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }}{% endblock %}
+{% block dashboard %}
+<div class="task-dashboard">
+	<div class="card info-card column align-start justify-end">
+		{{ components.spinner(true) }}
+		<h1>{{ task.name }}</h1>
+		<p>{{ task.description }}</p>
+	</div>
+	<div class="card deadline-card">
+		{{ components.spinner(true, true) }}
+		<h2 class="due_date">Due on {{ task['deadline'] }}</h2>
+		{{ components.task_status(task) }}
+	</div>
+	<div class="card subtasks">
+		<div class="wrapper justify-between">
+			<h2>Subtasks</h2>
+			{% if task['completed'] == none %}
+				<button class="create_subtask sec">Create Subtask</button>
+			{% endif %}
+		</div>
+		{{ components.spinner() }}
+		{% for subtask in task['subtasks'] %}
+			{{ components.subtask_card(subtask) }}
+		{% endfor %}
+	</div>
+	<div class="card members-card">
+		<h2>Assigned Users</h2>
+		{{ components.spinner(true) }}
+		{% for member in task['assignments'] %}
+		<div class="member">
+			<p>{{ member['user']['firstname'] }} {{ member['user']['lastname'] }}</p>
+			<a class="button small details" href="{{ url_for('view_user', pid=project['pid'], id=member['user']['id']) }}">Details</a>
+		</div>
+		{% endfor %}
+	</div>
+	<div class="card history-card">
+		<h2>History</h2>
+		{{ components.spinner(true) }}
+		{% for change in task['history'] %}
+			<span class="text bold">{{ change['time'] }}</span>
+			<p>{{ change['action'] }}</p>
+		{% endfor %}
+	</div>
+	{% if task['completed'] == none %}
+	<div class="card status-card">
+		{{ components.spinner(true, true) }}
+		<div class="status-prompt">
+			{% if current_request == none %}
+				<h2>There are no open requests to change this task's status at this time</h2>
+			{% else %}
+				<h2>The group is requesting to {{ components.task_request_class(current_request, current_request) }} this task</h2>
+			{% endif %}
+			<div class="wrapper justify-around">
+				{% if is_on_task %}
+					{% if current_request == none %}
+						<button id="skip_request" class="button task_status skip">Skip this task</button>
+						{% if task['status'] == 'IN_PROGRESS' or task['status'] == 'OVERDUE' %}
+							<button id="submit_request" class="button task_status submit">Submit this task</button>
+						{% else %}
+							<button id="start_request" class="button task_status warning">Start this task</button>
+						{% endif %}
+					{% else %}
+						{% if not has_confirmed %}
+							<button id="{{ current_request }}_confirm" class="button task_status submit">Confirm</button>
+							<button id="{{ current_request }}_deny" class="button task_status danger">Deny</button>
+						{% endif %}
+					{% endif %}
+				{% endif %}
+			</div>
+		</div>
+		<div class="requests">
+			{% if current_request != none %}
+				<ul class="confirmed-requests">
+					<h3>Already Confirmed:</h3>
+					{% for assignment in requests[current_request] %}
+						{% if assignment['user']['id'] == user['id']  %}
+							<li class="text bold">{{ assignment['user']['firstname'] }} {{ assignment['user']['lastname'] }} (You)</li>
+						{% else %}
+							<li>{{ assignment['user']['firstname'] }} {{ assignment['user']['lastname'] }}</li>
+						{% endif %}
+					{% endfor %}
+				</ul>
+				<ul class="pending-requests">
+					<h3>Awaiting Confirmation:</h3>
+					{% for assignment in requests['pending'] %}
+						{% if assignment['user']['id'] == user['id']  %}
+							<li class="text bold">{{ assignment['user']['firstname'] }} {{ assignment['user']['lastname'] }} (You)</li>
+						{% else %}
+							<li>{{ assignment['user']['firstname'] }} {{ assignment['user']['lastname'] }}</li>
+						{% endif %}
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</div>
+	</div>
+	{% if user['rank'] != 'Member' %}
+		<div class="card card-dark override">
+			{{ components.spinner() }}
+			<p class="text invert sub mb-1">These options are available because you {{ 'are the project owner' if user['rank'] == 'Owner' else 'have the leader rank' }}</p>
+			<h2 class="text invert">Override Task Status</h2>
+			<div class="wrapper mb-2 align-center justify-even">
+				<button id="skip_override" class="button task_status skip" href="/">Force Skip this Task</button>
+				{% if task['status'] == 'Not Started' %}
+					<button id="start_override" class="button task_status warning"href="/">Force Start this Task</button>
+				{% else %}
+					<button id="submit_override" class="button task_status submit" href="/">Force Submit this Task</button>
+				{% endif %}
+			</div>
+			{% if user['rank'] != 'Leader' %}
+			<h2 class="text invert mt-1">Edit Task</h2>
+			<form class="edit_task">
+				{{ form.hidden_tag() }}
+				<p class="error bold"></p>
+				{{ components.spinner() }}
+				<div class="field">
+					{{ form.name.label(class_="invert") }}
+					{{ form.name(size=32) }}
+				</div>
+				<div class="field">
+					{{ form.description.label(class_="invert") }}
+					{{ form.description(size=32) }}
+				</div>
+				<div class="drop">
+					<div class="drop-list">
+						<div class="drop-area on_project card-embed">
+							{% for user in form.users %}
+								{% if user.data not in task_users %}
+								<div class="user drop-card" draggable="true">
+									{{ user }}
+									{{ user.label }}
+								</div>
+								{% endif %}
+							{% endfor %}
+						</div>
+					</div>
+					<div class="drop-assigned">
+						<div class="drop-area on_task card-embed">
+							{% for user in form.users %}
+								{% if user.data in task_users %}
+								<div class="user drop-card" draggable="true">
+									{{ user }}
+									{{ user.label }}
+								</div>
+								{% endif %}
+							{% endfor %}
+						</div>
+					</div>
+				</div>
+				<div class="field inline">
+					{{ form.deadline.label(class_="invert") }}
+					{{ form.deadline }}
+				</div>
+				{{ form.submit(class_="task_edit submit") }}
+			</form>
+			<h2 class="text invert mt-1">Delete Task</h2>
+			<button class="task_delete show danger">Delete Task</button>
+			{% endif %}
+		</div>
+		{% endif %}
+	{% endif %}
+</div>
+<script>
+	const userId = parseInt("{{ user['id'] }}")
+	let isOnTask = "{{ 'false' if user['id'] not in task_users else 'true' }}" === 'true' ? true : false
+	let taskIsComplete = "{{ 'false' if task['completed'] == none else 'true' }}" === 'true' ? true : false
+	let isLeader = "{{ 'false' if user['rank'] == 'Member' else 'true' }}" === 'true' ? true : false
+
+	const getStatusFormat = (status, completed, subtask=false) => {
+		const dateFmt = completed ? `<span class="text bold">${getDateFmt(completed)}</span>` : null;
+		const utilStatus = new Map([['Not Started', [`This ${subtask ? 'subtask' : 'task'} has`, getColoredStatusText(status, 'not been started'), '']],
+									['In Progress', [`This ${subtask ? 'subtask' : 'task'} is`, getColoredStatusText(status, 'currently in progress'), '']],
+									['Overdue', [`This ${subtask ? 'subtask' : 'task'} is`, getColoredStatusText(status, 'overdue'), '']],
+									['Skipped', [`This ${subtask ? 'subtask' : 'task'} was`, getColoredStatusText(status, 'skipped'), ` on ${dateFmt}`]],
+									['Completed', [`This ${subtask ? 'subtask' : 'task'} was`, getColoredStatusText(status, 'completed'), ` on ${dateFmt}`]],
+									['Completed Late', [`This ${subtask ? 'subtask' : 'task'} was`, getColoredStatusText(status, 'completed late'), ` on ${dateFmt}`]]])
+		return utilStatus.get(status)
+	}
+
+	const getCurrentRequest = (requests) => {
+		let currentRequest = null
+		Array.from(requests.keys()).forEach((request) => {
+			if (request !== null) {
+				if (currentRequest !== null) {
+					if (requests.get(request).length > requests.get(currentRequest).length) {
+						currentRequest = request.toLowerCase()
+					}
+				} else {
+					if (requests.get(request).length > 0) {
+						currentRequest = request.toLowerCase()
+					}
+				}
+			}
+		})
+		return currentRequest
+	}
+
+	const getConfirmationModal = (request, action) => {
+		let dialog = `{{ components.spinner() }}`
+		const fmtRequest = `<span class="text bold ${utilClasses.get(request)}">${request}</span>`
+		if (action === 'request') {
+			dialog += `<h2>Open a request to ${fmtRequest} this task</h2>
+				<p>All users on the task must approve this request for the tasks's status to be updated</p>`
+			if (request !== 'start') {
+				dialog += `<p>Once all users have agreed to ${fmtRequest} this task, <span class="text bold">you will need to fill out peer evaluations for all other users on this task</span></p>`
+			}
+		} else if (action === 'override') {
+			dialog += `<h2><span class="text ${utilClasses.get(action)}">${normalize(request)}</span> this task by Force</h2>
+				<p>As a Leader on this Project, you can override a task's status without the need for approval</p>
+				<p>This will <span class="bold text">immediately</span> ${fmtRequest} this task</p>`
+			if (request !== 'start') {
+				dialog += `<p>Users assigned to the task will still need to fill out peer evaluations</p>`
+			}
+		} else {
+			dialog += `<h2><span class="text ${utilClasses.get(action)}">${normalize(action)}</span> the request to <span class="text ${utilClasses.get(request)}">${request}</span> this task</h2>`
+			if (action === 'deny') {
+				dialog += `<p>Denying the request will <span class="text bold danger">close the current request</span></p>`
+			}
+			if (action === 'confirm' && request !== 'start') {
+				dialog += `<p>Once all users have agreed to ${fmtRequest} this task, <span class="text bold">you will need to fill out peer evaluations for all other users on this task</span></p>`
+			}
+		}
+		dialog += `<p>This change <span class="text bold danger">will be recorded</span></p>
+			<p><span class="text bold">All users on the task and all project leaders can view this information</span></p>
+			<p class="error"></p>
+			<div class="wrapper align-center justify-even">
+				<button type="button" class="modal_btn modal_close details">Nevermind</button>
+				<button class="modal_btn update_task danger">I Understand, Proceed</button>
+			</div>`
+		return dialog
+	}
+
+	const getSubtaskModal = (subtask) => {
+		const { name, description, status, due, deadline, completed, stid } = subtask
+		const [status1, status2, status3] = getStatusFormat(normalize(status), completed, true)
+		let dialog = `
+			<h1>Subtask: ${name}</h1>
+			{{ components.spinner(false, false) }}
+			<p>${description}</p>
+			<p>Due on ${getDateFmt(deadline)}</p>
+			<p>${status1} <span class="text ${utilClasses.get(status)}">${status2}</span>${status3}</p>
+			<p class="error"></p>
+			<div class="wrapper align-center justify-even">
+				<button type="button" class="modal_btn modal_close details">Close</button>
+			</div>`
+			if (isOnTask && !taskIsComplete && completed === null) {
+			dialog += `
+				<h2>Change the status of this Subtask</h2>
+				<p>This does not require group approval, but it will be recorded in the task's history</p>
+				<p>Additionally, all users on the task will be notified</p>
+				<div class="wrapper align-center justify-even">
+					<button id="subtask_skip" class="subtask_status skip">Skip this Subtask</button>`
+			dialog += status === 'IN_PROGRESS' || status === 'OVERDUE' ? `<button id="subtask_submit" class="subtask_status submit">Submit this Subtask</button>` : `<button id="subtask_start" class="subtask_status warning">Start this Subtask</button>`
+			dialog += `</div>`
+		}
+		return dialog
+	}
+
+	const updateInfoCard = (infoCard, name, description) => {
+		infoCard.children('h1').text(name)
+		infoCard.children('p').text(description)
+		infoCard.children('.temp').hide()
+		infoCard.children(':not(.temp)').show()
+
+	}
+	const updateDeadlineCard = (deadline, status, completed) => {
+		const [status1, status2, status3] = getStatusFormat(status, completed)
+		$('.deadline-card .due_date').text(`Due on ${deadline}`)
+		$('.deadline-card .status_text').html(`${status1} <span class="text ${utilClasses.get(status)}">${status2}</span>${status3}`)
+		$('.deadline-card .temp').hide()
+		$('.deadline-card :not(.temp)').show()
+	}
+
+	const updateMembersCard = (isOnTask, hasConfirmed, requests, assignments) => {
+		$('.members-card .member').remove()
+		assignments.forEach((assignment) => {
+			const { aid, request, user } = assignment
+			const { id, firstname, lastname } = user
+			$('.members-card').append(`<div class="member">
+				<p>${firstname} ${lastname}</p>
+				<a class="button small details" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/users/${id}">Details</a>
+			</div>`)
+		})
+		$('.members-card .temp').hide()
+		$('.members-card > *:not(.temp)').show()
+	}
+
+	const updateStatusCard = (isOnTask, hasConfirmed, requests, currentRequest, status, completed) => {
+		if (completed !== null) {
+			$('.status-card > .temp').hide()
+			return
+		}
+		$('.status-card .requests').empty()
+		$('.status-card .wrapper').empty()
+		const header = $('.status-card > .status-prompt > h2')
+		if (currentRequest === null) {
+			header.html(`There are no open requests to change this task's status at this time`)
+			if (isOnTask) {
+				let buttons = `<button id="skip_request" class="button task_status skip">Skip this task</button>`
+				const inProgress = status === 'In Progress' || status === 'Overdue'
+				buttons += inProgress ? `<button id="submit_request" class="button task_status submit">Submit this task</button>` : `<button id="start_request" class="button task_status warning">Start this task</button>`
+				$('.status-card > .status-prompt > .wrapper').html(buttons)
+			}
+		} else {
+			header.html(`The group is requesting to <span class="text bold ${utilClasses.get(currentRequest)}">${currentRequest}</span> this task`)
+			if (isOnTask && !hasConfirmed) {
+				$('.status-card .wrapper').append(`<button id="${currentRequest}_confirm" class="button task_status submit">Confirm</button>`)
+				$('.status-card .wrapper').append(`<button id="${currentRequest}_deny" class="button task_status danger">Deny</button>`)
+			}
+			const requestStates = [['confirmed', 'Already Confirmed:'], ['pending', 'Awaiting Confirmation:']]
+			requestStates.forEach(([state, prompt]) => {
+				$('.status-card').children('.requests').append(`<ul class="${state}-requests"></ul>`)
+				$(`.${state}-requests`).append(`<h3>${prompt}</h3>`)
+			})
+			requests.get(currentRequest).forEach((assignment) => {
+				const { firstname, lastname, id, } = assignment.user
+				const content = `${firstname} ${lastname}${id === userId ? ' (You)' : ''}`
+				const item = `<li ${id === userId ? 'class="text bold"' : ''}>${content}</li>`
+				$('.confirmed-requests').append(item)
+			})
+			requests.get(null).forEach((assignment) => {
+				const { firstname, lastname, id, } = assignment.user
+				const content = `${firstname} ${lastname}${id === userId ? ' (You)' : ''}`
+				const item = `<li ${id === userId ? 'class="text bold"' : ''}>${content}</li>`
+				$('.pending-requests').append(item)
+			})
+		}
+		$('.status-card .temp').hide()
+		$('.status-card *:not(.temp)').show()
+	}
+
+	const updateSubtasksCard = (subtasks, completed) => {
+		$('.subtasks .wrapper button').remove()
+		$('.subtasks .task-card').remove()
+		subtasks.forEach((subtask) => {
+			const { name, descritpion, status, due, deadline, completed, stid } = subtask
+			daysUntilDue(deadline)
+			let fmtDue = due, matches = due.match(/\b(late|Completed|Skipped)\b/g)
+			matches ? matches.forEach((match) => fmtDue = due.replace(match, `<span class="text bold ${utilClasses.get(match)}">${match}</span>`)) : {}
+			$('.subtasks').append(`<div id="subtask_${stid}" class="card card-embed subtask task-card">
+				<span class="indicator ${utilClasses.get(status)}"></span>
+				<h3>${name} - <span class="text bold ${utilClasses.get(status)}">${status}</span></h3>
+				<p class="date">Due on ${deadline}</p><p class="due">${fmtDue}</p>
+				<button class="subtask_details details small">Details</button>
+			</div>`)
+		})
+		if (!completed) {
+			$('.subtasks .wrapper').append(`<button class="create_subtask sec">Create Subtask</button>`)
+		}
+		$('.subtasks .temp').hide()
+		$('.subtasks :not(.temp)').show()
+	}
+
+	const updateHistoryCard = (history) => {
+		$('.history-card > *:not(.temp, h2)').remove()
+		history.forEach((change) => {
+			$('.history-card').append(`<span class="text bold">${change.time}:</span>`)
+			$('.history-card').append(`<p>${change.action}</p>`)
+		})
+		$('.history-card .temp').hide()
+		$('.history-card  > *:not(.temp)').show()
+	}
+
+	const updateOverride = (status) => {
+		let buttons = `<button id="skip_override" class="button task_status skip" href="/">Force Skip this Task</button>`
+		buttons += status === 'Not Started' ? `<button id="start_override" class="button task_status warning"href="/">Force Start this Task</button>` : `<button id="submit_override" class="button task_status submit" href="/">Force Submit this Task</button>`
+		$('.override > .wrapper').html(buttons)
+		$('.override .temp').hide()
+		$('.override > *:not(.temp)').show()
+	}
+
+	const fetchTaskData = () => {
+		$('.info-card .temp, .deadline-card .temp, .members-card .temp, .status-card .temp, .subtasks .temp, .history-card .temp, .override .temp').fadeIn(500)
+		$('.info-card >*:not(.temp), .deadline-card >*:not(.temp), .members-card >*:not(.temp), .status-card >*:not(.temp), .subtasks >*:not(.temp), .history-card >*:not(.temp), .override > *:not(.temp)').hide()
+		fetch(`${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/tasks/get/{{ task['tid'] }}`)
+		.then(response => response.json())
+		.then(data => {
+			const { assignments, completed, deadline, description, history, name, status, subtasks, tid } = data
+			const requests = new Map([[null, []], ['start', []], ['skip', []], ['submit', []]])
+			isOnTask = false
+			taskIsComplete = completed !== null
+			let hasConfirmed = false
+			assignments.forEach((assignment) => {
+				const { aid, request, user } = assignment
+				const { id, firstname, lastname } = user
+				requests.get(request ? request.toLowerCase() : request).push(assignment)
+				isOnTask = user.id === userId ? true : isOnTask
+				hasConfirmed = isOnTask && request !== null ? true : hasConfirmed
+			})
+			const currentRequest = getCurrentRequest(requests)
+			if (requests.get(null).length === 0) {
+				$('.override').hide()
+				if (completed === null) {
+					return updateTaskStatus(currentRequest, 'override')
+				}
+			}
+			if (completed !== null) {
+				$('.override').hide()
+			}
+			updateInfoCard($('.info-card'), name, description)
+			updateDeadlineCard(deadline, status, completed)
+			updateMembersCard(isOnTask, hasConfirmed, requests, assignments)
+			completed === null ? updateStatusCard(isOnTask, hasConfirmed, requests, currentRequest, status, completed) : $('.status-card').hide()
+			updateSubtasksCard(subtasks, completed)
+			updateHistoryCard(history)
+			isLeader ? updateOverride(status) : {}
+			addButtonListeners()
+		})
+	}
+
+	const updateTaskStatus = (request, action) => {
+		const params = {
+			type: "POST",
+			selectors: {
+				content: ".modal p:not(.error), .modal h2",
+				spinner: ".modal .temp",
+				buttons: ".modal_btn",
+				error: ".modal .error"
+			},
+			url: `${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/tasks/{{ task['tid'] }}/${request}/${action}`,
+			handler: (code, message) => {
+				$(document).trigger('closeModal')
+				const dashboard = document.querySelector('.dashboard-content')
+				dashboard.scrollTo({ top: 0, behavior: 'smooth' })
+				fetchTaskData()
+			}
+		}
+		ajaxRequest(params)
+	}
+
+	const addButtonListeners = () => {
+		$(".task_status").on("click", (e) => {
+			e.preventDefault()
+			const id = $(e.target).attr("id")
+			const [request, action] = id.split("_")
+			$(document).trigger("showModal", [getConfirmationModal(request, action)])
+			$('.update_task').on("click", (e) => {
+				e.preventDefault()
+				updateTaskStatus(request, action)
+			})
+		})
+		$(".create_subtask").on("click", (e) => {
+			$(document).trigger("showModal", [`{{ modals.add_subtask(project, subtask_form) }}`])
+			const url = `{{ url_for('create_subtask', pid=project['pid'], tid=task['tid']) }}`
+			$("form.add_subtask").on("submit", (e) => {
+				e.preventDefault()
+				const params = {
+					type: "POST",
+					selectors: {
+						spinner: ".modal .temp",
+						buttons: ".modal_btn",
+						content: "form.add_subtask .field, form.add_subtask .error, form.add_subtask .drop",
+						error: ".modal .error"
+					},
+					form: 'form.add_subtask',
+					url: url,
+					token: '{{ subtask_form.csrf_token._value() }}',
+					handler: (code, message) => {
+						$(document).trigger('closeModal')
+						fetchTaskData()
+					}
+				}
+				ajaxRequest(params)
+			})
+			$(".task_delete.show.danger").on("click", () => {
+				$(document).trigger("showModal", [`{{ modals.delete_task(project, task) }}`])
+				$(".temp").hide()
+				const input = ".modal input[type=text]"
+				const deleteButton = ".modal .button.delete"
+				const error = ".modal .error"
+				$(input).on("keyup", (e) => {
+					if ($(e.target).val() !== "{{ task['name'] }}") {
+						$(error).text("Task name does not match")
+						$(deleteButton).addClass("disabled")
+					} else {
+						$(error).text("")
+						$(deleteButton).removeClass("disabled")
+					}
+				})
+				$(deleteButton).click(() => {
+					$('.modal p, .modal .field').hide()
+					$('.modal .temp').fadeIn(500)
+				})
+			})
+		})
+		$('.subtask_details').on('click', async (e) => {
+			const stid = parseInt(e.target.closest('.task-card').id.slice(8))
+			fetch(`${$SCRIPT_ROOT}/project/{{ project['pid'] }}/subtask/get/${stid}`)
+			.then(response => response.json())
+			.then((data) => {
+				$(document).trigger("showModal", [getSubtaskModal(data)])
+				if (!taskIsComplete) {
+					$('.subtask_status').on("click", (e) => {
+						const [subtask, newStatus] = e.target.id.split("_")
+						const params = {
+							type: "POST",
+							selectors: {
+								content: ".modal p, .modal h2, .subtask_status",
+								spinner: ".modal .temp",
+								buttons: ".subtask_status",
+								error: ".subtask .error"
+							},
+							url: `${$SCRIPT_ROOT}/project/{{ project['pid'] }}/tasks/{{ task['tid'] }}/subtask/${stid}/${newStatus}`,
+							handler: (code, message) => {
+								$(document).trigger('closeModal')
+								const dashboard = document.querySelector('.dashboard-content')
+								dashboard.scrollTo({ top: 0, behavior: 'smooth' })
+								fetchTaskData()
+							}
+						}
+						ajaxRequest(params, true)
+					})
+				}
+			})
+		})
+	}
+
+	$(() => {
+		dragAndDrop()
+		addButtonListeners(parseInt("{{ task['tid'] }}"))
+		$('.edit_task').on("submit", (e) => {
+			e.preventDefault()
+			const params = {
+				type: "POST",
+				selectors: {
+					content: ".edit_task .field, .edit_task .drop",
+					spinner: ".edit_task .temp",
+					buttons: ".override button, .override .button, .override input[type=submit]",
+					error: ".override .error"
+				},
+				form: "form.edit_task",
+				url: `${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/tasks/{{ task['tid'] }}/update`,
+				handler: (code, message) => {
+					$(document).trigger('closeModal')
+					const dashboard = document.querySelector('.dashboard-content')
+					dashboard.scrollTo({ top: 0, behavior: 'smooth' })
+					fetchTaskData()
+				}
+			}
+			ajaxRequest(params, true)
+		})
+	})
+</script>
+{% endblock %}

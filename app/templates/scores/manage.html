@@ -1,0 +1,71 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Manage Scores{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Manage Scores</h1>
+</div>
+<div class="table-container">
+	<p class="text bold mt-1 mb-1">At least 3 peer reviews of a user must be submitted for that user to recieve scores</p>
+	<table>
+		<thead>
+			<tr>
+				<th class="sortable ascending" scope="col">Id</th>
+				<th class="sortable" scope="col">Name</th>
+				<th class="sortable" scope="col">Communication</th>
+				<th class="sortable" scope="col">Feedback</th>
+				<th class="sortable" scope="col">Attendance</th>
+				<th class="sortable" scope="col">Responsibility</th>
+				<th class="sortable" scope="col">Performance</th>
+				<th class="sortable" scope="col">Efficiency</th>
+				<th class="sortable" scope="col">Overall</th>
+				<th scope="col"></th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for score in scores %}
+			<tr>
+				<th scope="row">{{ score['user']['id'] }}</th>
+				<td>{{ score['user']['firstname'] }} {{ score['user']['lastname'] }}</td>
+				{% for (category, score) in score['categories'].items() %}
+				<td>{{ score }}</td>
+				{% endfor %}
+				<td>{{ score['overall'] }}</td>
+				<td>
+					<a class="button small details" href="{{ url_for('view_score', pid=project['pid'], id=score['user']['id'])}}">Details</a>
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</div>
+<!-- <script>
+	$(() => {
+		$('table').hide()
+		fetch(`${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/forms/get`)
+		.then(response => response.json())
+		.then(data => {
+			const tableBody = document.createElement('tbody')
+			data.forms.forEach((form) => {
+				form.evaluations.forEach((evaluation) => {
+					const row = document.createElement('tr')
+					row.innerHTML = `
+						<th scope="col">${evaluation.eid}</th>
+						<td>${form.user}</td>
+						<td>${form.task}</td>
+						<td>${evaluation.target}</td>
+						<td>
+							<a class="button small details" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/form/${evaluation.eid}">Details</a>
+							<a class="button small submit" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/form/enable/${evaluation.eid}">Enable</a>
+							<a class="button small danger" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/form/disable/${evaluation.eid}">Disable</a>
+						</td>`
+					tableBody.appendChild(row);
+				})
+			})
+			$('table').append(tableBody)
+			$('table').fadeIn(500);
+			$('.temp').remove();
+		})
+	})
+</script> -->
+{{ components.sort_table() }}
+{% endblock %}

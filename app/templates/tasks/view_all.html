@@ -1,0 +1,38 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Tasks{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Your Tasks</h1>
+</div>
+<div class="collapse">
+	<div class="collapse-head open">Incomplete Tasks</div>
+	<div class="collapse-body">
+	{% if incomplete|length > 0 %}
+		{% for task in incomplete %}
+			{{ components.task_card(project, task) }}
+		{% endfor %}
+	{% else %}
+		<p class="empty bold">There are no incomplete tasks to display</p>
+	{% endif %}
+	</div>
+</div>
+<div class="collapse">
+	<div class="collapse-head open">Complete Tasks</div>
+	<div class="collapse-body">
+	{% if complete|length > 0 %}
+		{% for task in complete %}
+			{{ components.task_card(project, task) }}
+		{% endfor %}
+	{% else %}
+		<p class="empty bold">There are no completed tasks to display</p>
+	{% endif %}
+	</div>
+</div>
+<script>
+	$(() => {
+		$(".collapse-head").on("click", ({ target }) => {
+			$(target).toggleClass("open")
+		})
+	})
+</script>
+{% endblock %}

@@ -1,0 +1,289 @@
+form:not(.passport) {
+	max-width: 48rem;
+	display: flex;
+	flex-direction: column;
+}
+.field {
+	margin-top: .25rem;
+	margin-bottom: .25rem;
+	display: flex;
+	flex-direction: column;
+}
+/* .modal > form {
+	display: flex;
+	flex-direction: column;
+	text-align: center;
+}
+.modal > form > .wrapper {
+	margin-top: 0;
+	justify-content: center;
+} */
+.error {
+	width: 100%;
+	font-size: 1.25rem;
+	margin-top: .25rem;
+	margin-bottom: .25rem;
+	padding: 0;
+	text-align: center;
+	color: var(--a-r-500);
+	font-weight: 500;
+}
+
+input[type=text],
+input[type=password],
+input[type=email],
+input[type=date],
+textarea,
+select {
+	appearance: none;
+	--moz-appearance: none;
+	margin-top: .25rem;
+	margin-bottom: .25rem;
+	padding: .25rem;
+	border-style: none;
+	border-radius: .25rem;
+	outline-style: solid;
+	outline-color: transparent;
+	outline-width: .125rem;
+	box-shadow: inset 0px 1px 3px hsl(0, 0%, 0%, .2), inset 0px -1px 3px hsl(0, 100%, 100%, .5);
+	font-size: 1.25rem;
+	opacity: .8;
+	transition-property: opacity;
+	transition-duration: .25s;
+	transition-timing-function: ease-in-out;
+}
+
+input[type=text]:focus,
+input[type=password]:focus,
+input[type=email]:focus,
+input[type=date]:focus,
+textarea:focus,
+select:focus,
+option:focus {
+	outline-color: var(--a-a-500);
+}
+
+input[type=text]:focus, input[type=text]:hover,
+input[type=password]:focus, input[type=password]:hover,
+input[type=email]:focus, input[type=email]:hover,
+input[type=date]:focus, input[type=date]:hover,
+textarea:focus, textarea:hover,
+select:focus, select:hover,
+option:focus, option:hover {
+	opacity: 1;
+}
+label {
+	color: var(--g-700);
+	font-size: 1.25rem;
+}
+.field.inline label {
+	margin-top: .25rem;
+	margin-bottom: .25rem;
+	margin-right: .5rem;
+}
+.subfield {
+	display: flex;
+	align-items: center;
+	padding-left: .25rem;
+}
+.subfield label {
+	margin-top: 0;
+	margin-left: .25rem;
+	color: var(--g-600);
+	font-size: 1rem;
+	font-weight: 400;
+}
+.danger {
+	background-color: var(--a-r-500);
+}
+.submit {
+	background-color: var(--a-g-500);
+}
+
+textarea {
+	min-height: 4rem;
+	max-height: 16rem;
+	font-size: 1rem;
+	resize: vertical;
+}
+
+input[type=text] {
+	max-width: 36rem;
+}
+input[type=date] {
+	max-width: 18rem;
+}
+
+option:hover {
+	background-color: var(--a-a-500);
+	color: var(--g-50);
+}
+
+/* Making a checkbox look like a switch */
+label.switch {
+	position: relative;
+	display: inline-block;
+	height: auto;
+	width: 4rem;
+	height: 2rem;
+	margin-top: .5rem;
+	margin-bottom: .5rem;
+}
+.switch > input {
+	width: 0;
+	height: 0;
+	visibility: hidden;
+}
+.handle {
+	height: auto;
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border-radius: 1rem;;
+	background-color: var(--g-400);
+	box-shadow: inset 0px 1px 3px hsl(0, 0%, 0%, .25), inset 0px -1px 3px hsl(0, 100%, 100%, .25);
+	transition: .25s;
+}
+.handle:before {
+	position: absolute;
+	content: "";
+	height: 1.5rem;
+	width: 1.5rem;
+	left: .25rem;
+	bottom: .25rem;
+	border-radius: 50%;
+	background-color: var(--g-50);
+	box-shadow: 0px 1px 3px hsl(0, 0%, 0%, .25), 0px -1px 3px hsl(0, 100%, 100%, .25);
+	transition: .4s;
+}
+.switch > input:checked + .handle {
+	background-color: var(--a-g-500);
+}
+.switch > input:checked + .handle::before {
+	transform: translateX(2rem);
+}
+.peer_eval input[type=radio] {
+	appearance: none;
+	position: relative;
+	width: 1rem;
+    height: 1rem;
+	background-color: var(--g-300);
+	border-radius: 50%;
+}
+.peer_eval input[type=radio]:checked {
+	background-color: var(--a-a-500);
+}
+.peer_eval input[type=radio]:checked:before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translateX(-50%) translateY(-50%);
+	border-radius: 50%;
+	width: .5rem;
+	height: .5rem;
+	background-color: var(--g-100);
+}
+.passport {
+	position: relative;
+	z-index: 1000;
+	border-radius: 2rem;
+	padding: 2rem;
+	margin: 1rem;
+	background-color: var(--g-50);
+	box-shadow: 0px 2px .25rem hsl(0, 0%, 0%, .2);
+}
+.passport.login {
+	grid-area: passport;
+	display: grid;
+	grid-template-areas: "title" "error " "." "." "btn";
+	grid-template-columns: 1fr;
+	grid-template-rows: auto [error] 2rem repeat(2, 1fr) auto;
+}
+.passport.register {
+	display: grid;
+	grid-template-areas: "title title" "error error " ". ." ". ." ". ." "btn btn";
+	grid-template-columns: 1fr 1fr;
+	grid-template-rows: auto [error] 2rem repeat(3, 1fr) auto;
+}
+.passport > h1 {
+	grid-area: title;
+	width: 100%;
+	font-size: 2.5rem;
+	font-weight: 500;
+	text-align: center;
+}
+.passport .field {
+	min-width: min(16vw, 24rem);
+	padding: .25rem;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+.passport input {
+	width: 100%;
+	padding: .5rem;
+	font-size: min(3vw, 1.5rem);
+	background-color: var(--g-100);
+	color: var(--g-800);
+}
+.passport input:focus, .passport input:hover {
+	opacity: 1;
+}
+.passport input:focus {
+	outline-color: var(--g-400);
+}
+.passport .container {
+	grid-area: btn;
+	margin-top: 1rem;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+.passport .btn {
+	margin: 1rem;
+	padding-top: .75rem;
+	padding-bottom: .75rem;
+	padding-left: 1.5rem;
+	padding-right: 1.5rem;
+	background-color: var(--p-600);
+	color: var(--p-50);
+	box-shadow: 0px -1px 3px hsl(0, 0%, 0%, .2), 0px 1px 3px var(--p-500);
+}
+.passport a {
+	font-size: 1rem;
+	color: var(--p-500);
+	text-decoration: none;
+}
+.passport a:hover {
+	text-decoration: underline;
+	text-decoration-color: var(--p-500);
+}
+.passport a:active {
+	color: var(--p-300);
+	text-decoration: underline;
+	text-decoration-color: var(--p-400);
+}
+.passport .error {
+	grid-area: error;
+	width: 100%;
+	margin-top: 1rem;
+	font-size: 1.25rem;
+	color: var(--a-r-500);
+	text-align: center;
+}
+.m0 {
+	margin: 0;
+}
+@media screen and (max-width: 1080px) {
+	/* .passport.register {
+		display: grid;
+		grid-template-areas: "title" "error " "." "." "." "." "." "." "btn";
+		grid-template-columns: 1fr;
+		grid-template-rows: auto [error] 2rem repeat(6, 1fr) auto;
+	} */
+}

@@ -1,0 +1,276 @@
+{% macro styles() %}
+	<link rel="stylesheet" href="{{ url_for('static', filename='globals.css') }}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='layout.css') }}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='forms.css') }}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='components.css') }}">
+{% endmacro %}
+
+{% macro globals() %}
+<script>
+	$SCRIPT_ROOT = {{ request.script_root|tojson|safe }}
+
+	const utilClasses = new Map([
+		['Not Started', 'details'], ['In Progress', 'warning'], ['Overdue', 'danger'],
+		['Skipped', 'skip'], ['Completed', 'submit'], ['Completed Late', 'submit'],
+		['start', 'warning'], ['skip', 'skip'], ['submit', 'submit'],
+		['requested', 'warning'], ['confirmed', 'submit'], ['denied', 'danger'], ['late', 'danger'],
+		['confirm', 'submit'], ['deny', 'danger']
+	])
+
+	const utilQuestions = new Map([
+		['Communication', 'This person effectively shared knowledge with other members of the team'],
+		['Feedback', 'This person provided constructive feedback to other team members regularly'],
+		['Attendance', 'This person attended scheduled meetings and contributed to team discussions'],
+		['Responsibility', 'This person fully understood their role in the task at hand'],
+		['Performance', 'This person contributed to the team and performed their role adequately'],
+		['Efficiency', 'This person completed tasks in an appropriate and timely manner']
+	])
+
+	const utilAnswers = new Map([
+		[5, 'Strongly Agree'], [4, 'Agree'], [3, 'Neutral'], [2, 'Disagree'], [1, 'Strongly Disagree']
+	])
+
+	const utilMonth = new Map([
+		['Jan', 1], ['Feb', 2], ['Mar', 3], ['Apr', 4], ['May', 5], ['Jun', 6],
+		['Jul', 7], ['Aug', 8], ['Sep', 9], ['Oct', 10], ['Nov', 11], ['Dec', 12]
+	])
+
+	const normalize = (words) => words.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.substr(1)).join(" ")
+
+	const getDateFmt = (date) => new Date(date).toDateString().split(' ').slice(1).map((sub, i) => i === 1 ? sub + "," : sub).join(' ')
+
+	const ajaxRequest = (params, autoShow) => {
+		const { type, selectors, url, form, token, handler } = params
+		const { spinner, buttons, content, error } = selectors
+		$(content).hide()
+		$(spinner).fadeIn(500)
+		$(buttons).addClass('disabled')
+		$.ajax({
+			type: type,
+			url: url,
+			data: $(form).serialize(),
+			success: (data) => {
+				const { code, message } = data
+				if (code === 200) {
+					console.log(message)
+					handler(code, message)
+					if (autoShow) {
+						$(spinner).hide()
+						$(content).show()
+						$(buttons).removeClass('disabled')
+					}
+				} else {
+					console.log(message)
+					$(error).text(message)
+					$(spinner).hide()
+					$(content).show()
+					$(buttons).removeClass('disabled')
+				}
+			}
+		})
+
+		$.ajaxSetup({
+			beforeSend: function(xhr, settings) {
+				if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+					xhr.setRequestHeader("X-CSRFToken", token);
+				}
+			}
+		});
+	}
+
+	const dragAndDrop = () => {
+		const areas = $(".drop-area")
+		const items = $(".drop-card")
+		const list = $(".drop-list .drop-area")
+		const assign = $(".drop-assigned .drop-area")
+		const checkboxes = $("input[type=checkbox]")
+		let dragged = null;
+		items.on("dragstart", (e) => dragged = $(e.target))
+		items.on("dragend", (e) => dragged = $(e.target))
+		areas.on("dragover", (e) => e.preventDefault())
+		areas.on("drop", (e) => {
+			const dropTarget = $(e.target).closest(".drop-area")
+			if (dropTarget.children('.drop-card').length === 0) {
+				if (dropTarget.children('span').length > 0) {
+					dropTarget.children('span').remove()
+				}
+			}
+			dropTarget.append(dragged)
+			$(dragged).children("input[type=checkbox]").attr("checked", dropTarget.hasClass("on_task"))
+			const dragFrom = $(`.drop-area.${dropTarget.hasClass("on_task") ? 'on_project' : 'on_task'}`)
+			if (dragFrom.children('.drop-card').length === 0) {
+				if (dragFrom.children('span').length === 0) {
+					dragFrom.append(`<span class="faded">Drag Users to ${dropTarget.hasClass("on_task") ? 'Remove' : 'Assign'}</span>`)
+				}
+			}
+		})
+	}
+
+	const daysUntilDue = (deadline) => {
+		let msPerDay = 1000 * 60 * 60 * 24
+		days = Math.round((new Date(parseInt(deadline.substr(8, 4)), utilMonth.get(deadline.substr(0, 3)), parseInt(deadline.substr(4, 2))) - new Date().getDate()) / msPerDay)
+		if (days === 1) {
+			return "Due tomorrow"
+		} else if (days === -1) {
+			return "Due Yesterday"
+		} else if (days < 0) {
+			return `${Math.abs(days)} days late`
+		} else if (days > 0) {
+			return `Due in ${Math.abs(days)} days`
+		} else {
+			return "Due today"
+		}
+	}
+</script>
+{% endmacro %}
+
+{% macro error(msg, align='center') %}
+	<p class="error {{ align }}-align">{% if msg is not none %}{{ msg }}{% endif %}</p>
+{% endmacro %}
+
+{% macro task_card(project, task) %}
+<div class="card task-card">
+	<span class="indicator {{ 'details' if task['status'] == 'Not Started' else
+							  'danger' if task['status'] == 'Overdue' else
+							  'warning' if task['status'] == 'In Progress' else
+							  'skip' if task['status'] == 'Skipped' else 'submit' }}"></span>
+	<h3>{{ task['name'] }}</h3>
+	<p class="date">{{ task['deadline'] }} - <span class="text bold {{ 'details' if task['status'] == 'Not Started' else 'danger' if task['status'] == 'Overdue' else 'warning' if task['status'] == 'In Progress' else 'skip' if task['status'] == 'Skipped' else 'submit' }}">{{ task['status'] }}</span></p>
+	<p class="due">{{ task['due'] }}</p>
+	<a class="button sec" href="{{ url_for('view_task', pid=project['pid'], tid=task['tid']) }}">Details</a>
+</div>
+{% endmacro %}
+
+{% macro form_card(user, project, evaluation) %}
+	<div class="card form-card" id="form_{{ evaluation['eid'] }}">
+		<span class="indicator {{ 'danger' if evaluation['status'] == 'Not Submitted' else 'submit' }}"></span>
+		<h3>Evaluation: {{ evaluation['target'] }} - <span class="text {{ 'danger' if evaluation['status'] == 'Not Submitted' else 'submit' }}">{{ evaluation['status']}}</span></h3>
+		{{ task_result(evaluation['task']['name'], evaluation['task']['status'], evaluation['task']['completed'], false) }}
+		{% if evaluation['status'] == 'Not Submitted' %}
+			<a class="form_submit submit button" href="{{ url_for('create_form', pid=project['pid'], tid=evaluation['task']['tid'], eid=evaluation['eid']) }}">Submit</a>
+		{% else %}
+			<button id="form_{{ evaluation['eid'] }}" class="modal_open form_info details">Details</button>
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{% macro sort_table() %}
+	<script src="{{ url_for('static', filename='scripts/sortTable.js') }}"></script>
+{% endmacro %}
+
+{% macro task_result(name, status, date, inline) %}
+	<div class="result">
+	{% if inline %}
+		<p><span class="text bold">{{ name }}</span> - <span class="text bold {{ 'skip' if status == 'Skipped' else 'submit' }}">{{ status }}</span> on <span class="text bold">{{ date }}</span></p>
+	{% else %}
+		<p>{{ name }}</p>
+		<p><span class="text bold {{ 'skip' if status == 'Skipped' else 'submit' }}">{{ status }}</span> on <span class="text bold">{{ date }}</span></p>
+	{% endif %}
+	</div>
+{% endmacro %}
+
+{% macro spinner(small=false, micro=false, start_hidden=true) %}
+	{% if start_hidden %}<div class="temp" style="display: none;">{% else %}<div class="temp">{% endif %}
+		<div class="spinner{{ '-small' if small else '-micro' if micro else '-large' }}"><div></div><div></div><div></div><div></div></div>
+	</div>
+{% endmacro %}
+
+{% macro task_status(task) %}
+	{% if task['status'] == 'Not Started' %}
+		<h2 class="status_text">This task has {{ task_status_class(task['status'], "not been started") }}</h2>
+	{% elif task['status'] == 'In Progress' %}
+		<h2 class="status_text">This task is {{ task_status_class(task['status'], "currently in progress") }}</h2>
+	{% elif task['status'] == 'Overdue' %}
+		<h2 class="status_text">This task is {{ task_status_class(task['status'], "overdue") }}</h2>
+	{% elif task['status'] == 'Skipped' %}
+		<h2 class="status_text">This task was {{ task_status_class(task['status'], "skipped") }} on {{ task['completed'] }}</h2>
+	{% elif task['status'] == 'Completed' %}
+		<h2 class="status_text">This task was {{ task_status_class(task['status'], "completed") }} on {{ task['completed'] }}</h2>
+	{% else %}
+		<h2 class="status_text">This task was {{ task_status_class(task['status'], "completed late") }} on {{ task['completed'] }}</h2>
+	{% endif %}
+{% endmacro %}
+
+{% macro task_status_class(status, content) %}
+	{% if status == 'Not Started' %}
+		<span class="text bold details">{{ content  }}</span>
+	{% elif status == 'In Progress' %}
+		<span class="text bold warning">{{ content  }}</span>
+	{% elif status == 'Overdue' %}
+		<span class="text bold danger">{{ content  }}</span>
+	{% elif status == 'Skipped' %}
+		<span class="text bold skip">{{ content  }}</span>
+	{% elif status == 'Completed' %}
+		<span class="text bold submit">{{ content  }}</span>
+	{% else %}
+		<span class="text bold submit">{{ content }}</span>
+	{% endif %}
+{% endmacro %}
+
+{% macro task_request_class(request, content) %}
+	{% if request == 'start' %}
+		<span class="text bold warning">{{ content  }}</span>
+	{% elif request == 'skip' %}
+		<span class="text bold skip">{{ content  }}</span>
+	{% else %}
+		<span class="text bold submit">{{ content }}</span>
+	{% endif %}
+{% endmacro %}
+
+{% macro task_history(change, hi) %}
+	{% if change['force'] == true %}
+	<p>{{ change['time'] }} - <span class="text bold">{{ change['name'] }}</span> <span class="text bold {{ 'warning' if change['request'] == 'start' else 'skip' if change['request'] == 'skip' else 'submit' }}">{{ 'started' if change['request'] == 'start' else 'skipped' if change['request'] == 'skip' else 'submitted' }}</span> this task <span class="text bold"></span></p>
+	{% else %}
+		{% if change['action'] == 'request' %}
+		<p>{{ change['time'] }} - <span class="text bold">{{ change['name'] }}</span> <span class="text bold warning">requested</span> to <span class="text bold {{ 'warning' if change['request'] == 'start' else 'skip' if change['request'] == 'skip' else 'submit' }}">{{ change['request'] }}</span> this task</p>
+		{% elif change['action'] == 'confirm' %}
+		<p>{{ change['time'] }} - <span class="text bold">{{ change['name'] }}</span> <span class="text bold submit">confirmed</span> the request to <span class="text bold {{ 'warning' if change['request'] == 'start' else 'skip' if change['request'] == 'skip' else 'submit' }}">{{ change['request'] }}</span> this task</p>
+		{% else %}
+		<p>{{ change['time'] }} - <span class="text bold">{{ change['name'] }}</span> <span class="text bold danger">denied</span> the request to <span class="text bold {{ 'warning' if change['request'] == 'start' else 'skip' if change['request'] == 'skip' else 'submit' }}">{{ change['request'] }}</span> this task</p>
+		{% endif %}
+	{% endif %}
+{% endmacro %}
+
+{% macro evaluation_question(category, answer) %}
+	{% if category == 'Communication' %}
+		<span>This person effectively shared knowledge with other members of the team: </span>
+	{% elif category == 'Feedback' %}
+		<span>This person provided constructive feedback to other team members regularly: </span>
+	{% elif category == 'Attendance' %}
+		<span>This person attended scheduled meetings and contributed to team discussions: </span>
+	{% elif category == 'Responsibility' %}
+		<span>This person fully understood their role in the task at hand: </span>
+	{% elif category == 'Performance' %}
+		<span>This person contributed to the team and performed their role adequately: </span>
+	{% else %}
+		<span>This person completed tasks in an appropriate and timely manner: </span>
+	{% endif %}
+{% endmacro %}
+
+{% macro evaluation_answer(answer) %}
+	{% if answer == 5 %}
+		<span class="text bold">Strongly Agree</span>
+	{% elif answer == 4 %}
+		<span class="text bold">Agree</span>
+	{% elif answer == 3 %}
+		<span class="text bold">Neutral</span>
+	{% elif answer == 2 %}
+		<span class="text bold">Disagree</span>
+	{% else %}
+		<span class="text bold">Strongly Disagree</span>
+	{% endif %}
+{% endmacro %}
+
+{% macro subtask_card(subtask) %}
+<div id="subtask_{{ subtask['stid'] }}" class="card card-embed subtask task-card">
+	<span class="indicator {{ 'details' if subtask['status'] == 'Not Started' else
+							  'danger' if subtask['status'] == 'Overdue' else
+							  'warning' if subtask['status'] == 'In Progress' else
+							  'skip' if subtask['status'] == 'Skipped' else 'submit' }}"></span>
+	<h3>{{ subtask['name'] }} - {{ task_status_class(subtask['status'], subtask['status']) }}</h3>
+	<p class="date">Due on {{ subtask['deadline'] }}</p>
+	<p class="due">{{ subtask['due'] }}</p>
+	<button class="subtask_details details small">Details</button>
+</div>
+{% endmacro %}

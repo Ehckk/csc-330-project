@@ -1,0 +1,210 @@
+{% import 'components.html' as components %}
+
+{% macro create_project(form) %}
+<h2>Create a New Project</h2>
+<form class="create_project">
+	{{ form.hidden_tag() }}
+	<p class="error"></p>
+	{{ components.spinner() }}
+	<div class="field">
+		{{ form.name.label }}
+		{{ form.name(size=32) }}
+	</div>
+	<div class="field">
+		{{ form.description.label }}
+		{{ form.description(size=32, rows="3") }}
+	</div>
+	<div class="field align-center">
+		{{ form.color.label }}
+		<div class="color">
+			{% for color in form.color %}
+				{{ color(class_="btn") }}
+			{% endfor %}
+		</div>
+	</div>
+	<div class="wrapper justify-even mt-1">
+		<button type="button" class="modal_btn modal_close details">Cancel</button>
+		{{ form.submit(class_="modal_btn project_create submit") }}
+	</div>
+</form>
+{% endmacro %}
+
+{% macro transfer_project(form, project) %}
+	<h2 class="text">Are you sure?</h2>
+	<form class="transfer_project">
+		{{ components.spinner() }}
+		{{ form.hidden_tag() }}
+		<p class="text">You will not be able to regain ownership unless the user gives it back to you</p>
+		<div class="field">
+			<p class="text">Be careful who you give ownership to, as <span class="text red bold">they can delete the project</span></p>
+			{{ form.new_owner.label }}
+			{{ form.new_owner() }}
+		</div>
+		<div class="field">
+			{{ form.new_rank.label }}
+			{{ form.new_rank() }}
+		</div>
+		<div class="field">
+			<label class="bold" for="confirm_transfer">To confirm, enter the project name as follows:</label>
+			<p class="project_name text bold sec large"></p>
+			<p class="error bold"></p>
+			<input name="confirm_transfer" type="text" />
+		</div>
+		<div class="wrapper justify-even">
+			<button type="button" class="modal_btn modal_close details">Nevermind</button>
+			{{ form.submit(class_="modal_btn project_transfer danger disabled") }}
+		</div>
+	</form>
+{% endmacro %}
+
+{% macro delete_project(project) %}
+	<h2 class="text">Are you sure?</h2>
+	{{ components.spinner() }}
+	<p class="text">Any tasks and form data on this project will be lost</p>
+	<p class="text">Consider transferring ownership of the project to another user instead</p>
+	<p class="text bold">This action <span class="text bold danger">cannot be undone</span></p>
+	<p class="error bold"></p>
+	<div class="field">
+		<label class="bold" for="confirm_delete">To confirm, enter the project name as follows:</label>
+		<p class="project_name text bold sec large"></p>
+		<input name="confirm_delete" type="text" />
+	</div>
+	<div class="wrapper align-center">
+		<button type="button" class="modal_btn modal_close details">Nevermind</button>
+		<a class="modal_btn button project_delete danger disabled" href="{{ url_for('delete_project', pid=project['pid']) }}">I Understand, Delete this Project</a>
+	</div>
+{% endmacro %}
+
+{% macro create_task(form) %}
+<h1>Create a New Task</h1>
+<form class="create_task">
+	{{ form.hidden_tag() }}
+	<p class="error bold"></p>
+	{{ components.spinner() }}
+	<div class="field">
+		{{ form.name.label }}
+		{{ form.name(size=32) }}
+	</div>
+	<div class="field">
+		{{ form.description.label }}
+		{{ form.description(size=32) }}
+	</div>
+	<div class="drop">
+		<div class="drop-list">
+			<div class="drop-area on_project card-embed">
+				{% for user in form.users %}
+					<div class="user drop-card" draggable="true">
+						{{ user }}
+						{{ user.label }}
+					</div>
+				{% endfor %}
+			</div>
+		</div>
+		<div class="drop-assigned">
+			<div class="drop-area on_task card-embed">
+				<span class="faded">Drag Users to Assign</span>
+			</div>
+		</div>
+	</div>
+	<div class="wrapper">
+		<button class="modal_btn reset_all small details">Reset</button>
+		<button class="modal_btn add_all small sec">Add All</button>
+	</div>
+	<div class="field align-center">
+		{{ form.deadline.label }}
+		{{ form.deadline() }}
+	</div>
+	<div class="wrapper align-center justify-even">
+		<button type="button" class="modal_btn modal_close details">Cancel</button>
+		{{ form.submit(class_="modal_btn task_create submit") }}
+	</div>
+</form>
+{% endmacro %}
+
+{% macro delete_task(project, subtask) %}
+{% endmacro %}
+
+{% macro add_user(form) %}
+<h1>Add a User to the Project</h1>
+{{ components.spinner() }}
+<form class="add_user">
+	{{ form.hidden_tag() }}
+	<p class="error bold"></p>
+	<div class="field">
+		{{ form.users }}
+	</div>
+	<div class="field justify-even align-center">
+		{{ form.rank.label }}
+		<label class="switch">
+			{{ form.rank }}
+			<span class="handle"></span>
+		</label>
+	</div>
+	<div class="wrapper align-center justify-even">
+		<button type="button" class="modal_btn modal_close details">Cancel</button>
+		{{ form.submit(class_="modal_btn user_add submit") }}
+	</div>
+</form>
+{% endmacro %}
+
+{% macro remove_user(project, user) %}
+<h1>Remove a User from the Project</h1>
+{{ components.spinner() }}
+<p class="error bold"></p>
+<p class="text bold">This will remove {{ user['firstname'] }} {{ user['lastname'] }} from the project</p>
+<p class="text bold">Even if added again, anything in their name <span class="text bold danger">will be lost</span></p>
+<div class="wrapper align-center">
+	<button type="button" class="modal_btn modal_close details">Nevermind</button>
+	<button class="modal_btn user_remove danger">I Understand, Remove this User</button>
+</div>
+{% endmacro %}
+
+{%- macro delete_task(project, task) %}
+	<h2 class="text">Are you sure?</h2>
+	{{ components.spinner(false) }}
+	<p class="text">Any subtasks created for this task will be lost</p>
+	<p class="text bold">This action <span class="text bold danger">cannot be undone</span></p>
+	<div class="field">
+		<label class="bold" for="confirm_delete">To confirm, enter the task name as follows:</label>
+		<h2 class="bold text sec">{{ task['name'] }}</h2>
+		<input name="confirm_delete" type="text" />
+	</div>
+	<p class="error bold"></p>
+	<div class="wrapper justify-even align-center">
+		<a href="{{ url_for('view_task', pid=project['pid'], tid=task['tid']) }}">
+			<button type="button" class="modal_btn modal_close details">Nevermind</button>
+		</a>
+		<a class="modal_btn button delete danger disabled" href="{{ url_for('delete_task', pid=project['pid'], tid=task['tid']) }}">I Understand, Delete this Task</a>
+	</div>
+{% endmacro %}
+
+
+{% macro add_subtask(project, form) %}
+<h1>Add a Subtask</h1>
+{{ components.spinner() }}
+<form class="add_subtask">
+	{{ form.hidden_tag() }}
+	<p class="error bold"></p>
+	<div class="field">
+		<p class="text">Subtasks are small steps towards completing the task</p>
+		<p class="text">The group does not have to agree on updating a subtask's status</p>
+		<p class="text">All group members will be notified of subtask changes, and said changes are recorded</p>
+	</div>
+	<div class="field">
+		{{ form.name.label }}
+		{{ form.name(size=32) }}
+	</div>
+	<div class="field">
+		{{ form.description.label }}
+		{{ form.description(size=32) }}
+	</div>
+	<div class="field align-center">
+		{{ form.deadline.label }}
+		{{ form.deadline() }}
+	</div>
+	<div class="wrapper align-center justify-even">
+		<button type="button" class="modal_btn modal_close details">Cancel</button>
+		{{ form.submit(class_="modal_btn subtask_add submit") }}
+	</div>
+</form>
+{% endmacro %}

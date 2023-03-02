@@ -1,0 +1,75 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Create Form{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Evaluation for {{ evaluation['target'] }}</h1>
+</div>
+<p class="desc">Answer the following questons based on {{ evaluation['target'] }}'s contribution to the following task:</p>
+{{ components.task_result(evaluation['task']['name'], evaluation['task']['status'], evaluation['task']['date'], true) }}
+<form class="peer_eval" method="post">
+	{{ components.error(msg) }}
+	{{ form.hidden_tag() }}
+	<div class="field">
+		{{ form.question1.label }}
+		{% for option in form.question1 %}
+		<div class="subfield inline">
+			{{ option }}
+			{{ option.label }}
+		</div>
+		{% endfor %}
+	</div>
+	<div class="field">
+		{{ form.question2.label }}
+		{% for option in form.question2 %}
+		<div class="subfield inline">
+			{{ option }}
+			{{ option.label }}
+		</div>
+		{% endfor %}
+	</div>
+	<div class="field">
+		{{ form.question3.label }}
+		{% for option in form.question3 %}
+		<div class="subfield inline">
+			{{ option }}
+			{{ option.label }}
+		</div>
+		{% endfor %}
+	</div>
+	<div class="field">
+		{{ form.question4.label }}
+		{% for option in form.question4 %}
+		<div class="subfield inline">
+			{{ option }}
+			{{ option.label }}
+		</div>
+		{% endfor %}
+	</div>
+	<div class="field">
+		{{ form.question5.label }}
+		{% for option in form.question5 %}
+		<div class="subfield inline">
+			{{ option }}
+			{{ option.label }}
+		</div>
+		{% endfor %}
+	</div>
+	<div class="field">
+		{{ form.question6.label }}
+		{% for option in form.question6 %}
+		<div class="subfield inline">
+			{{ option }}
+			{{ option.label }}
+		</div>
+		{% endfor %}
+	</div>
+	<div class="field">
+		{{ form.comment.label }}
+		{{ form.comment }}
+	</div>
+	<div class="wrapper align-center justify-even">
+		<a href="/project/{{ project['pid'] }}/forms" class="button danger">Cancel</a>
+		{{ form.submit(class_="submit") }}
+	</div>
+</form>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block dashboard %}
+<main class="dashboard__content">
+	<div class="header">
+		<h1 >Subtask for {{task.name}}</h1>
+	</div>
+	<div >
+		{% for subtask in subtasks %}
+			<div class="card theme-{{ project.color }}">
+				<h2 class="card__title">{{ subtask.name }}</h2>
+				<p>{{ subtask.description}}</p>
+				<p>Deadline: {{subtask.get('deadline')}}</p>
+			</div>
+		</a>
+		{% endfor %}
+	</div>
+</main>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - User{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >{{ target['firstname'] }} {{ target['lastname'] }}</h1>
+    {% if (user['rank'] == 'Leader' and target['rank'] == 'Member') or (user['rank'] == 'Owner' and target['rank'] != 'Owner') %}
+        {% if user['id'] != target['id'] %}
+            <button class="show danger">Remove User</button>
+            <script>
+                const url =
+                $(() => {
+                    $("button.show.danger").on("click", () => {
+                        $(document).trigger("showModal", [`{{ modals.remove_user(project, target) }}`])
+
+                        $(".modal_btn.user_remove").on("click", (e) => {
+                            e.preventDefault()
+                            const params = {
+                                type: "POST",
+                                selectors: {
+                                    spinner: ".modal .temp",
+                                    buttons: ".modal_btn",
+                                    content: ".modal p",
+                                    error: ".modal .error"
+                                },
+                                url: `{{ url_for('remove_user', pid=project['pid'], id=target['id']) }}`,
+                                handler: (code, message) => window.location.href = "{{ url_for('view_users', pid=project['pid']) }}"
+                            }
+                            ajaxRequest(params)
+                        })
+                    })
+                })
+            </script>
+        {% endif %}
+    {% endif %}
+</div>
+<div class="card user-card">
+    <h3>Username: {{ target['username'] }}</h3>
+    <h3>Email: {{ target['email'] }}</h3>
+    <h3>Rank: {{ target['rank'] }}</h3>
+</div>
+<div class="collapse">
+	<div class="collapse-head open">Common Tasks</div>
+	<div class="collapse-body">
+	{% if common_tasks|length > 0 %}
+		{% for task in common_tasks %}
+			{{ components.task_card(project, task) }}
+		{% endfor %}
+	{% else %}
+		<p class="empty bold">There are no common tasks to display</p>
+	{% endif %}
+	</div>
+</div>
+<script>
+	$(() => {
+		$(".collapse-head").on("click", ({ target }) => {
+			$(target).toggleClass("open")
+		})
+	})
+</script>
+{% endblock %}

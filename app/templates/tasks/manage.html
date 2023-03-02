@@ -1,0 +1,107 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Tasks{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Manage Tasks</h1>
+	<button class="base">Create New Task</button>
+</div>
+{{ components.spinner() }}
+<div class="table-container">
+	<table>
+		<thead>
+			<tr>
+				<th class="sortable ascending" scope="col">Id</th>
+				<th class="sortable" scope="col">Name</th>
+				<th class="sortable date" scope="col">Deadline</th>
+				<th class="sortable" scope="col">Status</th>
+				<th scope="col"></th>
+			</tr>
+		</thead>
+		<tbody>
+		{% for task in tasks %}
+			<tr>
+				<th scope="col">{{ task['tid'] }}</th>
+				<td>{{ task['name'] }}</td>
+				<td>{{ task['deadline'] }}</td>
+				<td class="text bold {{ 'details' if task['status'] == 'Not Started' else 'danger' if task['status'] == 'Overdue' else 'warning' if task['status'] == 'In Progress' else 'skip' if task['status'] == 'Skipped' else 'submit' }}" >{{ task['status'] }}</td>
+				<td>
+					<a class="button small details" href="{{ url_for('view_task', pid=project['pid'], tid=task['tid']) }}">Details</a>
+				</td>
+			</tr>
+		{% endfor %}
+		</tbody>
+	</table>
+</div>
+<script>
+	const fetchTasks = () => {
+		$('.dashboard-content > .temp').show()
+		$('table').hide()
+		$('table > tbody').empty()
+		fetch(`${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/tasks/get`)
+		.then(response => response.json())
+		.then(data => {
+			const { tasks } = data
+			tasks?.forEach((task) => $('tbody').append(getTableRow(task)))
+			$('table').fadeIn(500);
+			$('.dashboard-content > .temp').hide()
+		})
+	}
+
+	const getTableRow = (task) => {
+		const { tid, name, deadline, status } = task
+		return `<tr><th scope="col">${tid}</th>
+		<td>${name}</td>
+		<td>${deadline}</td>
+		<td class="text bold ${utilClasses.get(status)}" >${status}</td>
+		<td>
+			<a class="button small details" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/tasks/${tid}">Details</a>
+		</td></tr>`
+	}
+
+	$(() => {
+		$(".dashboard-content .temp").hide()
+
+		$("button.base").on("click", () => {
+			$(document).trigger("showModal", [`{{ modals.create_task(form)|safe }}`])
+
+			const url = `{{ url_for('create_task', pid=project['pid']) }}`
+			$("form.create_task").on("submit", (e) => {
+				e.preventDefault()
+				const params = {
+					type: "POST",
+					selectors: {
+						spinner: ".modal .temp",
+						buttons: ".modal_btn",
+						content: "form.create_task .field, form.create_task .error, form.create_task .drop",
+						error: ".modal .error"
+					},
+					form: 'form.create_task',
+					url: url,
+					token: '{{ form.csrf_token._value() }}',
+					handler: (code, message) => {
+						$(document).trigger('closeModal')
+						fetchTasks()
+					}
+				}
+				ajaxRequest(params)
+			})
+			dragAndDrop()
+			$(".reset_all").on("click", (e) => {
+				e.preventDefault()
+				$('.drop-list span').remove()
+				$('.drop-list .drop-area').append($('.drop-card'))
+				$('.drop-assigned .drop-area').html(`<span class="faded">Drag Users to Assign</span>`)
+				$("input[type=checkbox]").attr('checked', false)
+			})
+			$(".add_all").on("click", (e) => {
+				e.preventDefault()
+				$('.drop-assigned span').remove()
+				$('.drop-assigned .drop-area ').append($('.drop-card'))
+				$('.drop-list .drop-area').html(`<span class="faded">Drag Users to Remove</span>`)
+				$("input[type=checkbox]").attr('checked', true)
+			})
+		})
+	})
+</script>
+{{ components.sort_table() }}
+{% endblock %}

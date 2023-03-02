@@ -1,0 +1,123 @@
+{% extends 'dashboard.html' %}
+{% block title %}{{ project['name'] }} - Users{% endblock %}
+{% block dashboard %}
+<div class="header">
+	<h1 >Users</h1>
+	{% if user['rank'] != 'Member' %}
+		<button class="show base">Add User</button>
+	{% endif %}
+</div>
+<div class="table-container">
+	<table>
+		<thead>
+			<tr>
+				<th class="sortable ascending" scope="col">Id</th>
+				<th class="sortable" scope="col">Name</th>
+				<th class="sortable" scope="col">Rank</th>
+				<th class="sortable" scope="col">Username</th>
+				<th class="sortable" scope="col">Email</th>
+				<th scope="col"></th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for target in project['users'] %}
+			<tr>
+				<th scope="col">{{ target['id'] }}</th>
+				<td>{{ target['firstname'] }} {{ target['lastname'] }}</td>
+				<td>{{ target['rank'] }}</td>
+				<td>{{ target['username'] }}</td>
+				<td>{{ target['email'] }}</td>
+				<td>
+					<a class="button small details" href="{{ url_for('view_user', pid=project['pid'], id=target['id'])}}">Details</a>
+					<button id="message_{{ target['id'] }}" class="message_user sec small">Send Message</button>
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</div>
+{{ components.sort_table() }}
+{% if user['rank'] != 'Member' %}
+<script>
+	const fetchData = () => {
+		$('.dashboard-content').append(`{{ components.spinner()|safe }}`);
+		$('table').hide()
+		fetch(`${$SCRIPT_ROOT}/projects/{{ project['pid'] }}/users/get`)
+		.then(response => response.json())
+		.then(data => {
+			const { users } = data
+			$('tbody').empty()
+			users.forEach((user) => $('tbody').append(getTableRow(user)))
+			$('table').fadeIn(500);
+			$('.temp').remove();
+		})
+	}
+
+	const getTableRow = (user) => {
+		const { id, firstname, lastname, rank, username, email } = user
+		return `<tr>
+			<th scope="col">${id}</th><td>${firstname} ${lastname}</td><td>${rank}</td><td>${username}</td><td>${email}</td>
+			<td>
+				<a class="button small details" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/users/${id}">Details</a>
+				<a class="button small sec" href="${$SCRIPT_ROOT}/project/{{ project['pid'] }}/users/${id}">Send Message</a>
+			</td>
+		</tr>`
+	}
+
+	$(() => {
+		$('.message_user').on("click", async (e) => {
+			const id = parseInt(e.target.id.substring(8))
+			const response = await fetch(`${$SCRIPT_ROOT}/users/get/${id}`)
+			const data = await response.json()
+			const { user } = data
+			$(document).trigger("showModal", [sendMessageModal(user)])
+			$("form.send_message").on("submit", (e) => {
+				e.preventDefault()
+				const params = {
+					type: "POST",
+					selectors: {
+						spinner: ".modal .temp",
+						buttons: ".modal_btn",
+						content: "form.send_message .field, form .error",
+						error: ".modal .error"
+					},
+					form: 'form.send_message',
+					url: `${$SCRIPT_ROOT}/messages/${id}`,
+					token: '{{ msg_form.csrf_token._value() }}',
+					handler: (code, message) => {
+						document.querySelector("form.send_message").reset()
+						$('.modal p.submit').show()
+						fetchMessages()
+					}
+				}
+				ajaxRequest(params, true)
+			})
+		})
+		$("button.show.base").on("click", () => {
+			$(document).trigger("showModal", [`{{ modals.add_user(form) }}`])
+
+			$("form.add_user").submit((e) => {
+				e.preventDefault()
+				const params = {
+					type: "POST",
+					selectors: {
+						spinner: ".modal .temp",
+						buttons: ".modal_btn",
+						content: "form.add_user .field, form.add_user .error",
+						error: ".modal .error"
+					},
+					form: 'form.add_user',
+					url: `{{ url_for('add_user', pid=project['pid']) }}`,
+					token: '{{ form.csrf_token._value() }}',
+					handler: (code, message) => {
+						$(document).trigger('closeModal')
+						window.location.reload();
+					}
+				}
+				ajaxRequest(params)
+			})
+		})
+	})
+</script>
+{% endif %}
+{% endblock %}

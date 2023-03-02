@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}My Projects{% endblock %}
+{% block content %}
+<main class="dashboard-content">
+	<div class="header">
+		<h1>Projects</h1>
+		<button class="button base" >Create Project</button>
+	</div>
+	{{ components.spinner() }}
+	<div class="projects">
+		{% for project in projects %}
+			<a class="no-underline" href="{{ url_for('view_tasks', pid=project['pid']) }}">
+				<div class="card project-card left-align theme-{{ project['color'] }}">
+					<h2>{{ project['name'] }}</h2>
+					<p>{{ project['rank'] }}</p>
+				</div>
+			</a>
+		{% endfor %}
+	</div>
+</main>
+<script>
+	const fetchProjects = () => {
+		$('.temp').fadeIn(500)
+		$('.projects').hide()
+		$('.projects').empty()
+		fetch(`${$SCRIPT_ROOT}/projects/get`)
+			.then(response => response.json())
+			.then(data => {
+				const { projects } = data
+				projects.forEach((project) => {
+					$('.projects').append(`
+						<a class="no-underline" href="/project/${project.pid}/tasks">
+							<div class="card project-card left-align theme-${project.color}">
+								<h2>${project['name']}</h2>
+								<p>${project.rank}</p>
+							</div>
+						</a>`
+					)
+			})
+			$('.projects').fadeIn(500);
+			$('.temp').hide();
+		})
+	}
+
+	$(() => {
+		$(".dashboard-content .temp").hide()
+
+		$("button.base").on("click", () => {
+			$(document).trigger("showModal", [`{{ modals.create_project(form)|safe }}`])
+			$("form.create_project").submit((e) => {
+				e.preventDefault()
+				const params = {
+					type: "POST",
+					selectors: {
+						spinner: ".modal .temp",
+						buttons: ".modal_btn",
+						content: "form.create_project .field, form.create_project .error",
+						error: ".modal .error"
+					},
+					form: 'form.create_project',
+					url: `{{ url_for('create_project') }}`,
+					token: '{{ form.csrf_token._value() }}',
+					handler: (code, message) => {
+						$(document).trigger('closeModal')
+						fetchProjects()
+					}
+				}
+				ajaxRequest(params)
+			})
+		})
+	})
+</script>
+{% endblock %}

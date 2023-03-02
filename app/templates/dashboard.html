@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block root %}
+<html lang="en" class="theme-{{ project['color'] }}">
+{% endblock %}
+{% block head %}
+	{{ super() }}
+{% endblock %}
+{% block content %}
+<main class="dashboard">
+	<div class="dashboard-bar">
+		<h1>{{ project['name'] }}</h1>
+	</div>
+	<div class="dashboard-side">
+		<h3>Member</h3>
+		<a href="{{ url_for('view_tasks', pid=project['pid'])}}">Your Tasks</a>
+		<a href="{{ url_for('view_forms', pid=project['pid'])}}">Your Forms</a>
+		<a href="{{ url_for('view_score', pid=project['pid'], id=user['id'])}}">Your Scores</a>
+		<a href="{{ url_for('view_users', pid=project['pid'])}}">Users</a>
+		{% if user['rank'] == 'Leader' or user['rank'] == 'Owner' %}
+		<h3>Leader</h3>
+		<a href="{{ url_for('manage_tasks', pid=project['pid'])}}">Manage Tasks</a>
+		<a href="{{ url_for('manage_forms', pid=project['pid'])}}">Manage Forms</a>
+		<a href="{{ url_for('manage_scores', pid=project['pid'])}}">Manage Scores</a>
+		{% endif %}
+		{% if user['rank'] == 'Owner' %}
+		<h3>Owner</h3>
+		<a href="{{ url_for('manage_project', pid=project['pid'])}}">Manage Project</a>
+		{% endif %}
+	</div>
+	<main class="dashboard-content">
+		{% block dashboard %}{% endblock %}
+	</main>
+</main>
+{% endblock %}

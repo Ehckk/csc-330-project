@@ -1,0 +1,42 @@
+{% import 'components.html' as components %}
+<html lang="en" class="theme-rose">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIM Tasks</title>
+	{{ components.styles() }}
+	{{ components.globals() }}
+</head>
+<body>
+    <svg class="blob" viewBox="0 0 110 100">
+        <path style="fill: var(--p-600)" d="M 109.875 115.005 C -87.094 120.161 64.671 72.568 62.653 28.873 C 58.105 -69.614 152.727 -54.403 174.192 -32.434 C 210.155 4.373 266.118 110.915 109.875 115.005 Z"></path>
+    </svg>
+    <main class="login-page center">
+        <div class="splash">
+            <p class="huge">DIM Tasks</p>
+            <p class="subtitle">Task management for what really matters</p>
+        </div>
+        <form class="passport login" method="post">
+            {{ form.hidden_tag() }}
+            <h1>Log In</h1>
+            <p class="error">
+				{% if msg is not none %}
+				{{ msg }}
+				{% endif %}
+			</p>
+            <div class="field">
+                {{ form.username.label }}
+                {{ form.username(size=32) }}
+            </div>
+            <div class="field">
+                {{ form.password.label }}
+                {{ form.password(size=32, class_="input") }}
+            </div>
+            <div class="container">
+                {{ form.submit(class_="btn") }}
+                <p>Don't have an account? <a class="text bold" href="/register">Create one!</a></p>
+            </div>
+        </form>
+    </main>
+</body>
